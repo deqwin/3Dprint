@@ -1,36 +1,51 @@
 var WebSocketServer = require('ws').Server;
 var fs = require('fs');
+var path = require('path');
 // 创建ws服务器
 var ws = new WebSocketServer({
     port: 1234    // 监听的端口
 });
 
+var fileNameGroup = [];
+
+var count = 0;
+
 ws.on('connection', function(socket){
     console.log('yes');
     socket.onmessage = function(body){
         //接收前台POST过来的base64
-        console.log(!!body)
-        var imgDataGroup = JSON.parse(body.data);
+        var imgData = JSON.parse(body.data);    
 
-        imgDataGroup.forEach(function(element) {
-            transImage(element);
-        });
+        transImage(imgData, socket);
+        fileNameGroup.push(imgData.fileName);
 
-        console.log('success');
-        socket.send('success');
+        count++;
+        if(count == imgData.count){
+            fs.writeFile(path.join(__dirname, 'info.txt'), Math.random() + '\r\n'+ fileNameGroup.join('\r\n'), function(err){
+                if(err){
+                    console.log('发生错误'+err);
+                }else{
+                    console.log("版本更新成功！");
+                    socket.send('success');
+                    fileNameGroup = [];
+                    count = 0;
+                }
+            });
+        }
         
     }
 });
 
-function transImage(imgData){
+function transImage(imgData, socket){
     //过滤data:URL
     var base64Data = imgData.data;
     var dataBuffer = new Buffer(base64Data, 'base64');
-    fs.writeFile(imgData.fileName, dataBuffer, function(err) {
+    fs.writeFile(path.join(__dirname, 'image', imgData.fileName), dataBuffer, function(err) {
         if(err){
             console.log('发生错误'+err);
         }else{
             console.log("保存成功！");
+            socket.send('done');
         }
     });
 }
