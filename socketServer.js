@@ -9,9 +9,13 @@ var ws = new WebSocketServer({
 var fileNameGroup = [];
 
 var count = 0;
+var timer = null;
+var version = '';
 
 ws.on('connection', function(socket){
+
     console.log('yes');
+
     socket.onmessage = function(body){
         //接收前台POST过来的base64
         var imgData = JSON.parse(body.data);    
@@ -33,6 +37,22 @@ ws.on('connection', function(socket){
             });
         }
         
+    };
+
+    if(!timer){
+        timer = setInterval(function(){
+            fs.readFile(path.join(__dirname, './Gcode/info.txt'), {encoding: 'utf8'}, function(err, data){
+                if(err) return;
+
+                if(version != data){
+                    console.log('to send .gcode')
+                    fs.readFile(path.join(__dirname, './Gcode/my.gcode'), {encoding: 'utf8'}, function(err_1, data_1){
+                        socket.send(data_1);
+                        version = data;
+                    });
+                }
+            })
+        }, 5000);
     }
 });
 
